@@ -68,7 +68,9 @@ background:yellow;
 <body>
 
 <h1>📘 UGC Regulation Assistant</h1>
-
+<div style="text-align:right;margin-bottom:10px;">
+    <div id="google_translate_element"></div>
+</div>
 <textarea
 id="query"
 placeholder="Ask your question in English..."></textarea>
@@ -258,13 +260,21 @@ ${r.score}
 
 <pre>${r.snippet}</pre>
 
+<div style="margin-top:15px;">
+
+<button
+onclick="translateSnippet(this)">
+🌐 Translate to Marathi
+</button>
+
 <a
 target="_blank"
-href="${PDF_FOLDER}${r.file}#page=${r.page}">
-
+href="${PDF_FOLDER}${r.file}#page=${r.page}"
+style="margin-left:15px;">
 📖 Open Original Page
-
 </a>
+
+</div>
 
 </div>
 
@@ -285,6 +295,40 @@ output;
 }
 
 </script>
+<script>
 
+function googleTranslateElementInit() {
+
+new google.translate.TranslateElement(
+{
+pageLanguage:'en',
+includedLanguages:'mr',
+layout:google.translate.TranslateElement.InlineLayout.SIMPLE
+},
+'google_translate_element'
+);
+
+}
+
+function translateSnippet(btn){
+
+const text =
+btn.parentElement
+.querySelector("pre")
+.innerText;
+
+const url =
+"https://translate.google.com/?sl=en&tl=mr&text="
++ encodeURIComponent(text)
++ "&op=translate";
+
+window.open(url,'_blank');
+
+}
+
+</script>
+
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
+    
 </html>
