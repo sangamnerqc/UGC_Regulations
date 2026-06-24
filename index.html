@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UGC Regulation Assistant</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+body{
+font-family:Arial,sans-serif;
+max-width:1000px;
+margin:auto;
+padding:20px;
+background:#f4f4f4;
+}
+
+h1{
+color:#003366;
+}
+
+textarea{
+width:100%;
+height:100px;
+padding:15px;
+font-size:18px;
+resize:none;
+}
+
+select{
+padding:10px;
+font-size:16px;
+margin-top:10px;
+}
+
+button{
+padding:12px 25px;
+font-size:18px;
+margin-top:15px;
+cursor:pointer;
+}
+
+.card{
+background:white;
+padding:20px;
+margin-top:20px;
+border-radius:10px;
+box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+
+.page{
+color:red;
+font-weight:bold;
+}
+
+pre{
+white-space:pre-wrap;
+line-height:1.6;
+}
+
+mark{
+background:yellow;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📘 UGC Regulation Assistant</h1>
+
+<textarea
+id="query"
+placeholder="Ask your question in English..."></textarea>
+
+<br>
+
+<select id="searchType">
+<option value="keyword">Keyword Search</option>
+<option value="exact">Exact Match</option>
+<option value="any">Any Word</option>
+<option value="all">All Words</option>
+</select>
+
+<br>
+
+<button onclick="searchPDFs()">
+🔍 Search
+</button>
+
+<div id="results"></div>
+
+<script>
+
+const PDF_FOLDER = "pdfs/";
+
+let pdfFiles = [];
+
+fetch(PDF_FOLDER + "files.json")
+.then(r => r.json())
+.then(data => {
+    pdfFiles = data;
+});
+
+async function searchPDFs(){
+
+let question =
+document.getElementById("query")
+.value
+.toLowerCase()
+.trim();
+
+if(question===""){
+return;
+}
+
+let searchType =
+document.getElementById("searchType").value;
+
+document.getElementById("results").innerHTML =
+"<h3>Searching...</h3>";
+
+let results=[];
+
+for(let file of pdfFiles){
+
+try{
+
+let pdf =
+await pdfjsLib
+.getDocument(PDF_FOLDER + file)
+.promise;
+
+for(let p=1;p<=pdf.numPages;p++){
+
+let page =
+await pdf.getPage(p);
+
+let content =
+await page.getTextContent();
+
+let text =
+content.items
+.map(x=>x.str)
+.join(" ");
+
+let lowerText =
+text.toLowerCase();
+
+let words =
+question
+.split(/\s+/)
+.filter(w=>w.length>2);
+
+let score=0;
+
+for(let w of words){
+
+if(lowerText.includes(w)){
+score++;
+}
+
+}
+
+let matched=false;
+
+if(searchType==="exact"){
+
+matched =
+lowerText.includes(question);
+
+}
+else if(searchType==="any"){
+
+matched =
+score>0;
+
+}
+else if(searchType==="all"){
+
+matched =
+score===words.length;
+
+}
+else{
+
+// keyword search
+matched =
+score>=Math.ceil(words.length/2);
+
+}
+
+if(matched){
+
+let snippet =
+text.substring(0,1500);
+
+for(let w of words){
+
+let regex =
+new RegExp(w,"gi");
+
+snippet =
+snippet.replace(
+regex,
+"<mark>$&</mark>"
+);
+
+}
+
+results.push({
+
+score:score,
+
+file:file,
+
+page:p,
+
+snippet:snippet
+
+});
+
+}
+
+}
+
+}
+catch(e){
+
+console.log(file,e);
+
+}
+
+}
+
+results.sort((a,b)=>
+b.score-a.score
+);
+
+let output="";
+
+for(let r of results){
+
+output += `
+
+<div class="card">
+
+<h2>${r.file}</h2>
+
+<p class="page">
+Page ${r.page}
+</p>
+
+<p>
+<b>Match Score:</b>
+${r.score}
+</p>
+
+<pre>${r.snippet}</pre>
+
+<a
+target="_blank"
+href="${PDF_FOLDER}${r.file}#page=${r.page}">
+
+📖 Open Original Page
+
+</a>
+
+</div>
+
+`;
+
+}
+
+if(output===""){
+output =
+"<h2>No matching reference found.</h2>";
+}
+
+document
+.getElementById("results")
+.innerHTML =
+output;
+
+}
+
+</script>
+
+</body>
+</html>
